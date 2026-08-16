@@ -1,0 +1,51 @@
+# 服务模式部署：一条命令起一套。
+#
+# 这份编排是 PRD 18 的「服务模式」那一半。单机开发不需要它——`agctl serve` 直接跑就行。
+# 它存在的意义是把「换成外部依赖」这件事从代码问题变成配置问题：
+#
+#   - 事件总线 → Redis Streams。`server/bus.py` 的形态刻意与它对齐（单调递增序号 +
+#     从某个序号之后重放），所以换的是实现不是调用方。
+#   - 状态存储 → PostgreSQL。`core/store.py` 把 SQL 关在仓储层里，同理。
+#
+# **两者都还没有换实现**（见 INDEX.md 的遗留账）。这份文件先把部署形状定下来，因为它决定了
+# 那两个实现要满足什么约束——反过来先写实现再补部署，约束会在最后一刻才浮出来。
+services:
+  orchestrator:
+    build: ..
+    command: ["agctl", "serve", "--host", "0.0.0.0", "--port", "8080", "--workspace", "/workspace"]
+    environment:
+      # 工作区按名字寻址，不是按路径——`?workspace=/etc` 是一次任意目录读取。
+      AGENTGENOME_WORKSPACES: "mall=/workspace"
+      AGENTGENOME_BUS: "redis://redis:6379/0"
+      AGENTGENOME_DATABASE: "postgresql://agentgenome:agentgenome@postgres:5432/agentgenome"
+    volumes:
+      - ./workspace:/workspace
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    ports: ["8080:8080"]
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: agentgenome
+      POSTGRES_PASSWORD: agentgenome
+      POSTGRES_DB: agentgenome
+    healthcheck:
+      # `--wait` 靠的就是它。没有健康检查的话编排器会在库还没起来时开始接请求。
+      test: ["CMD-SHELL", "pg_isready -U agentgenome"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

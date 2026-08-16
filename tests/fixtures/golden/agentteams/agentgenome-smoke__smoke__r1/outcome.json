@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "detail": null,
+  "artifacts": {
+    "result.json": "{\"task_id\": \"smoke-002\", \"passed\": true}\n"
+  },
+  "changed_files": {
+    "hello.txt": "hello from agentgenome adapter\n"
+  },
+  "tokens_used": null,
+  "events": [
+    {
+      "kind": "text",
+      "text": "# Task Result: smoke-002-smoke-r1\n\nCompleted smoke test task for agentgenome adapter verification.\n\n## Actions Taken\n1. Created `workspace/hello.txt` with content: `hello from agentgenome adapter`\n2. Created `artifacts/result.json` with task result: `{\"task_id\": \"smoke-002\", \"passed\": true}`\n3. Updated `meta.json` status to `SUCCESS`\n\nTask completed successfully."
+    }
+  ]
+}

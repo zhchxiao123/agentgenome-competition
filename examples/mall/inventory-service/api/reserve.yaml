@@ -1,0 +1,31 @@
+openapi: 3.0.3
+info:
+  title: 库存预占接口
+  version: 1.0.0
+paths:
+  /reserve:
+    post:
+      summary: 为一笔订单预占库存
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sku, quantity, order_id]
+              properties:
+                sku: {type: string}
+                quantity: {type: integer, minimum: 1}
+                order_id: {type: string}
+      responses:
+        "200":
+          description: 预占成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reservation_id]
+                properties:
+                  reservation_id: {type: string}
+        "409":
+          description: 库存不足

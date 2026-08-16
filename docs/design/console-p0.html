@@ -1,0 +1,1341 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AgentGenome 控制台 · 交互原型</title>
+<style>
+  :root{
+    --bg:#f4f6fa; --card:#fff; --line:#e8ecf3; --line2:#f0f3f8;
+    --ink:#1d2129; --ink2:#5b6477; --ink3:#98a1b3;
+    --pri:#2f6bff; --pri-bg:#eef3ff;
+    --ok:#12b76a; --ok-bg:#e8f8f0;
+    --warn:#f79009; --warn-bg:#fff6e8;
+    --bad:#f04438; --bad-bg:#feecec;
+    --pur:#7a5af8; --pur-bg:#f1eeff;
+    --r:10px; --sh:0 1px 2px rgba(16,24,40,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:13.5px/1.6 -apple-system,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+  .app{display:grid;grid-template-columns:196px 1fr;min-height:100vh}
+
+  /* 侧栏 */
+  .side{background:#fff;border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column}
+  .logo{display:flex;align-items:center;gap:8px;padding:4px 8px 16px;font-weight:700;font-size:15px}
+  .logo i{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#2f6bff,#7a5af8);display:inline-block}
+  .nav button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;
+    color:var(--ink2);font:inherit;padding:9px 10px;border-radius:8px;cursor:pointer}
+  .nav button:hover{background:var(--bg)}
+  .nav button.on{background:var(--pri-bg);color:var(--pri);font-weight:600}
+  .nav .n{margin-left:auto;background:var(--bad);color:#fff;font-size:11px;padding:0 6px;border-radius:9px;line-height:16px}
+  .side .foot{margin-top:auto;background:linear-gradient(160deg,#eef3ff,#f6f2ff);border-radius:10px;padding:12px;font-size:12px;color:var(--ink2)}
+  .side .foot b{display:block;color:var(--ink);margin-bottom:2px}
+
+  /* 顶栏 */
+  .top{display:flex;align-items:center;gap:14px;background:#fff;border-bottom:1px solid var(--line);padding:10px 20px}
+  .ws{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:13px}
+  .ws i{width:20px;height:20px;border-radius:5px;background:var(--pri-bg);display:grid;place-items:center;font-size:11px;color:var(--pri)}
+  .search{flex:1;max-width:430px;display:flex;align-items:center;gap:8px;background:var(--bg);
+    border:1px solid var(--line);border-radius:8px;padding:7px 11px;color:var(--ink3);font-size:12.5px}
+  .search kbd{margin-left:auto;background:#fff;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:11px}
+  .me{display:flex;align-items:center;gap:8px;margin-left:auto}
+  .av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#2f6bff,#7a5af8);color:#fff;
+    display:grid;place-items:center;font-size:12px;font-weight:600}
+  .me small{display:block;color:var(--ink3);font-size:11px;line-height:1.2}
+
+  .main{padding:18px 20px 46px;overflow:auto}
+  h1{font-size:20px;margin:0 0 2px}
+  .sub{color:var(--ink3);font-size:12.5px;margin-bottom:16px}
+  .page{display:none}.page.on{display:block}
+  .head{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+  .head .spacer{flex:1}
+
+  .grid{display:grid;gap:12px}
+  .g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:1fr 1fr} .g6{grid-template-columns:repeat(6,1fr)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;box-shadow:var(--sh)}
+  .card>h3{margin:0 0 12px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+  .card>h3 .more{margin-left:auto;font-size:12px;color:var(--ink3);font-weight:400;cursor:pointer}
+  .kpi .lab{color:var(--ink2);font-size:12.5px;margin-bottom:6px}
+  .kpi .val{font-size:27px;font-weight:700;letter-spacing:-.6px;line-height:1.1}
+  .kpi .dt{font-size:11.5px;color:var(--ink3);margin-top:5px}
+  .up{color:var(--ok)} .down{color:var(--bad)} .amber{color:var(--warn)} .blue{color:var(--pri)} .purple{color:var(--pur)}
+  .spark{height:34px;width:100%;margin-top:6px}
+
+  .t{font-size:11.5px;padding:1px 8px;border-radius:5px;white-space:nowrap;font-weight:500}
+  .t.pri{background:var(--pri-bg);color:var(--pri)} .t.ok{background:var(--ok-bg);color:var(--ok)}
+  .t.warn{background:var(--warn-bg);color:var(--warn)} .t.bad{background:var(--bad-bg);color:var(--bad)}
+  .t.pur{background:var(--pur-bg);color:var(--pur)} .t.mute{background:var(--bg);color:var(--ink2)}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;color:var(--ink3);font-weight:500;padding:7px 8px;border-bottom:1px solid var(--line)}
+  td{padding:9px 8px;border-bottom:1px solid var(--line2)}
+  tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:var(--bg)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--ink2)}
+
+  .btn{background:#fff;border:1px solid var(--line);color:var(--ink);padding:7px 13px;border-radius:8px;font:inherit;cursor:pointer}
+  .btn:hover{border-color:#c9d2e3}
+  .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+  .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+  .btn.bad{background:#fff;border-color:#f5b5b0;color:var(--bad)}
+  .btn.sm{padding:4px 10px;font-size:12.5px}
+  .btn.blk{width:100%;display:block;margin-bottom:8px;text-align:center}
+
+  /* 泳道 */
+  .lanes{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px}
+  .lane{flex:0 0 216px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px;box-shadow:var(--sh)}
+  .lane.term{flex:0 0 190px;background:#fbfcfe}
+  .lane h4{margin:0 0 10px;font-size:11.5px;letter-spacing:.4px;display:flex;align-items:center;gap:6px;color:var(--ink2)}
+  .lane h4 b{margin-left:auto;color:var(--ink3);font-weight:500}
+  .lane h4::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--ink3)}
+  .lane.l1 h4::before{background:#98a1b3}.lane.l2 h4::before{background:var(--pri)}
+  .lane.l3 h4::before{background:var(--pur)}.lane.l4 h4::before{background:#06aed4}
+  .lane.l5 h4::before{background:var(--warn)}.lane.l6 h4::before{background:var(--ok)}
+  .lane.l7 h4::before{background:var(--bad)}
+  .tk{border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-bottom:8px;cursor:pointer;background:#fff}
+  .tk:hover{border-color:var(--pri);box-shadow:0 2px 8px rgba(47,107,255,.10)}
+  .tk .r1{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+  .tk b{display:block;font-size:13px;font-weight:550;margin-bottom:6px}
+  .tk .m{color:var(--ink3);font-size:11.5px;margin-bottom:7px}
+  .bar{height:4px;border-radius:3px;background:var(--line);overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--pri)}
+  .who{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:11.5px;color:var(--ink2)}
+  .who .a{width:17px;height:17px;border-radius:50%;background:var(--pri-bg);color:var(--pri);display:grid;place-items:center;font-size:9px;font-weight:600}
+  .who .a.bot{background:var(--pur-bg);color:var(--pur)}
+
+  /* 步骤条 */
+  .steps{display:flex;align-items:center;gap:0}
+  .steps .s{flex:1;text-align:center;position:relative}
+  .steps .s::after{content:"";position:absolute;top:13px;left:50%;width:100%;height:2px;background:var(--line)}
+  .steps .s:last-child::after{display:none}
+  .steps .s.done::after{background:var(--ok)}
+  .steps .dot{width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid var(--line);
+    display:grid;place-items:center;margin:0 auto 6px;font-size:11px;color:var(--ink3);position:relative;z-index:1}
+  .steps .s.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+  .steps .s.now .dot{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 0 0 4px var(--pri-bg)}
+  .steps .lb{font-size:12px;color:var(--ink2)} .steps .s.now .lb{color:var(--pri);font-weight:600}
+  .steps .tm{font-size:11px;color:var(--ink3)}
+
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink2);
+    padding:9px 14px;font:inherit;cursor:pointer}
+  .tabs button.on{color:var(--pri);border-bottom-color:var(--pri);font-weight:600}
+  .pane{display:none}.pane.on{display:block}
+
+  pre.log{background:#fbfcfe;border:1px solid var(--line);border-radius:8px;margin:0;padding:10px 12px;
+    max-height:300px;overflow:auto;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.85;color:var(--ink2)}
+  pre.log .lv{display:inline-block;width:44px;font-size:10px;font-weight:600;text-align:center;border-radius:3px;margin-right:6px}
+  pre.log .i{background:var(--pri-bg);color:var(--pri)} pre.log .w{background:var(--warn-bg);color:var(--warn)}
+  pre.log .e{background:var(--bad-bg);color:var(--bad)} pre.log .d{background:var(--bg);color:var(--ink3)}
+  pre.log .ts{color:var(--ink3)}
+
+  .diff{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .diff .fh{background:#fbfcfe;color:var(--ink2);padding:7px 11px;border-bottom:1px solid var(--line);
+    display:flex;gap:8px;align-items:center;font-family:inherit;font-size:12px}
+  .diff .fh .st{margin-left:auto}
+  .diff div.l{padding:2px 11px;white-space:pre;overflow-x:auto}
+  .diff .add{background:#eafaf1;color:#0a7a48}
+  .diff .del{background:#fdeeee;color:#b42318}
+
+  label{display:block;font-size:12.5px;color:var(--ink2);margin:14px 0 6px}
+  label .req{color:var(--bad)}
+  input,textarea,select{width:100%;background:#fff;border:1px solid var(--line);color:var(--ink);
+    border-radius:8px;padding:9px 11px;font:inherit}
+  input:focus,textarea:focus{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-bg)}
+  textarea{min-height:96px;resize:vertical}
+  .cnt{text-align:right;color:var(--ink3);font-size:11px;margin-top:3px}
+  .radios{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .radios .rd{border:1px solid var(--line);border-radius:9px;padding:11px 13px;cursor:pointer}
+  .radios .rd.on{border-color:var(--pri);background:var(--pri-bg)}
+  .radios .rd b{display:block;font-size:13px} .radios .rd small{color:var(--ink3)}
+  .chips{display:flex;gap:8px}
+  .chips span{border:1px solid var(--line);border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12.5px}
+  .chips span.on{border-color:var(--pri);background:var(--pri-bg);color:var(--pri);font-weight:600}
+  .err{color:var(--bad);font-size:12px;margin-top:6px;display:none}.err.on{display:block}
+  .cbs label{display:flex;align-items:center;gap:8px;margin:0 0 9px;color:var(--ink);font-size:12.5px;cursor:pointer}
+  .cbs input{width:auto}
+
+  .note{border-left:3px solid var(--pri);background:var(--pri-bg);padding:9px 12px;border-radius:0 8px 8px 0;
+    color:var(--ink2);font-size:12.5px}
+  .note.warn{border-left-color:var(--warn);background:var(--warn-bg)}
+  .empty{color:var(--ink3);text-align:center;padding:22px 0;font-size:12.5px}
+  .kv{display:flex;padding:7px 0;border-bottom:1px solid var(--line2);font-size:12.5px}
+  .kv:last-child{border-bottom:0} .kv .k{color:var(--ink3);width:78px;flex:none} .kv .v{color:var(--ink)}
+  .kv .v a{color:var(--pri)}
+
+  .gapbtn{position:fixed;right:16px;bottom:16px;z-index:20}
+  .gapbtn .btn{box-shadow:0 8px 24px rgba(16,24,40,.16)}
+  .gap{display:none;position:fixed;right:16px;bottom:62px;width:430px;max-height:66vh;overflow:auto;z-index:20;
+    background:#fff;border:1px solid var(--pri);border-radius:var(--r);padding:16px 18px;box-shadow:0 12px 36px rgba(16,24,40,.18)}
+  .gap.on{display:block}
+  .gap h4{margin:14px 0 5px;font-size:13px}.gap h4:first-of-type{margin-top:8px}
+  .gap p{margin:0 0 4px;color:var(--ink2);font-size:12.5px}
+  .gap table{margin-top:8px}
+
+  /* ═══ 对话工作台 ═══ */
+  .chat{display:grid;grid-template-columns:262px 1fr 276px;gap:12px;align-items:start}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);
+    height:calc(100vh - 92px);display:flex;flex-direction:column;overflow:hidden}
+  .col>.ch{padding:12px 13px 10px;border-bottom:1px solid var(--line);flex:none}
+  .col>.ch h3{margin:0;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+  .col>.ch .sb{color:var(--ink3);font-size:11.5px;margin-top:2px}
+  .col>.cb{overflow:auto;padding:11px 12px;flex:1}
+  .col>.cf{border-top:1px solid var(--line);padding:11px 12px;flex:none;background:#fbfcfe}
+
+  /* 会话行 —— 模式是**静态属性**，不是可点的开关 */
+  .ses{border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-bottom:7px;cursor:pointer;background:#fff}
+  .ses:hover{border-color:var(--pri);box-shadow:0 2px 8px rgba(47,107,255,.10)}
+  .ses.on{border-color:var(--pri);background:var(--pri-bg)}
+  .ses b{display:block;font-size:12.5px;font-weight:550;margin:5px 0 4px}
+  .ses .m{color:var(--ink3);font-size:11px}
+  .ses .q{color:var(--ink2);font-size:11.5px;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* 上下文条 —— 住在对话栏内部，因为它是**这个会话**的 */
+  .ctx{background:#fbfcfe;border-bottom:1px solid var(--line);padding:9px 12px;flex:none}
+  .ctx .lb{font-size:11px;color:var(--ink3);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .ctx .cs{display:flex;flex-wrap:wrap;gap:6px}
+  .cp{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);
+    border-radius:14px;padding:3px 9px;font-size:11.5px;color:var(--ink2)}
+  .cp.pin{border-color:var(--pri);color:var(--pri);background:var(--pri-bg)}
+  .cp.cut{color:var(--ink3);border-style:dashed}
+  .cp x{color:var(--ink3);cursor:pointer;font-style:normal;font-size:12px;line-height:1}
+
+  /* 消息 */
+  .msg{margin-bottom:16px}
+  .msg.u{display:flex;justify-content:flex-end}
+  .msg.u .bb{background:var(--pri-bg);border-radius:10px 10px 2px 10px;padding:9px 12px;max-width:76%;font-size:13px}
+  .msg.a .hd{display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:12px;color:var(--ink2)}
+  .msg.a .hd .a{width:20px;height:20px;border-radius:50%;background:var(--pur-bg);color:var(--pur);
+    display:grid;place-items:center;font-size:10px;font-weight:600}
+  .msg.a .bd{border-left:2px solid var(--line2);padding-left:11px;margin-left:9px}
+  .msg p{margin:0 0 9px}
+  .older{text-align:center;font-size:11.5px;color:var(--ink3);padding:7px 0 13px}
+  .older button{background:#fff;border:1px solid var(--line);border-radius:14px;padding:3px 12px;
+    font:inherit;font-size:11.5px;color:var(--ink2);cursor:pointer}
+
+  /* 块 —— 每个块一个白底外框，与任务详情页共用同一套渲染器 */
+  .blk{border:1px solid var(--line);border-radius:8px;margin:0 0 9px;overflow:hidden}
+  .blk>.bh{background:#fbfcfe;border-bottom:1px solid var(--line);padding:6px 10px;font-size:11.5px;
+    color:var(--ink2);display:flex;align-items:center;gap:6px}
+  .blk>.bh .r{margin-left:auto;color:var(--ink3)}
+  .blk>.bc{padding:10px}
+  .tool{display:flex;align-items:center;gap:7px;padding:5px 10px;font-size:11.5px;border-bottom:1px solid var(--line2)}
+  .tool:last-child{border-bottom:0}
+  .tool .ok{color:var(--ok)} .tool .mono{flex:1;font-size:11px}
+  .fref{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:6px;
+    padding:2px 8px;margin:0 5px 5px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;
+    color:var(--ink2);background:#fbfcfe;cursor:pointer}
+  .fref:hover{border-color:var(--pri);color:var(--pri)}
+  .acts{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px}
+  /* 反馈不是装饰 —— 它是知识卡片 hits 的输入源（§10.2 自然选择） */
+  .fb{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink3);margin-top:2px}
+  .fb button{background:none;border:1px solid var(--line);border-radius:12px;padding:1px 9px;
+    font:inherit;font-size:11px;color:var(--ink2);cursor:pointer}
+  .fb button:hover{border-color:var(--pri);color:var(--pri)}
+  .fb .sp{margin-left:auto}
+
+  /* 草稿卡 —— 确认之前不落库 */
+  .draft{border:1px solid var(--pri);border-radius:8px;background:var(--pri-bg);padding:11px 12px;margin-bottom:9px}
+  .draft h5{margin:0 0 8px;font-size:12.5px;display:flex;align-items:center;gap:6px}
+  .draft textarea,.draft input{background:#fff;font-size:12.5px;padding:7px 9px;min-height:auto}
+  .draft textarea{min-height:56px}
+  .draft .lb{font-size:11px;color:var(--ink2);margin:8px 0 3px}
+
+  .composer{border:1px solid var(--line);border-radius:9px;background:#fff;padding:8px 10px}
+  .composer textarea{border:0;padding:0;min-height:38px;font-size:13px}
+  .composer textarea:focus{box-shadow:none}
+  .crow{display:flex;align-items:center;gap:6px;margin-top:6px}
+  .crow .sp{margin-left:auto}
+  .budget{font-size:11px;color:var(--ink3);margin-top:7px;display:flex;align-items:center;gap:8px}
+  .budget .bar{flex:1;max-width:120px}
+
+  .grp{margin-bottom:14px}
+  .grp>.gh{font-size:11.5px;color:var(--ink3);margin-bottom:7px;display:flex;align-items:center;gap:6px}
+  .grp>.gh b{color:var(--ink2);font-weight:600}
+  .ev{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12px}
+  .ev b{display:block;font-size:12.5px;margin-bottom:3px}
+  .ev .m{color:var(--ink3);font-size:11px}
+  /* 窄栏里路径要整段断，不能从 code- 中间劈开 */
+  .ev .mono{word-break:break-all;line-height:1.5}
+  .col .chips{flex-wrap:wrap} .col .chips span{white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="logo"><i></i>AgentGenome</div>
+    <nav class="nav">
+      <button class="on" data-go="work">🏠 工作台</button>
+      <button data-go="submit">📝 需求管理</button>
+      <button data-go="tasks">📋 任务中心</button>
+      <button data-go="review">✅ 审批中心 <span class="n">8</span></button>
+      <button data-go="chat">💬 对话工作台</button>
+      <button data-go="genome">🧬 基因组管理</button>
+      <button data-go="obs">📈 观测中心</button>
+      <button data-go="settings">⚙️ 系统设置</button>
+    </nav>
+    <div class="foot"><b>探索 AgentGenome</b>了解平台能力与最佳实践
+      <div style="margin-top:8px"><button class="btn sm">立即探索</button></div></div>
+  </aside>
+
+  <div>
+    <header class="top">
+      <div class="ws"><i>鲸</i> 鲸智百应 / AgentGenome Demo ▾</div>
+      <div class="search">🔍 搜索需求、任务、文档或输入 / 快捷指令 <kbd>⌘K</kbd></div>
+      <div class="me">🔔 &nbsp;❓ <div class="av">张</div>
+        <div>张伟<small>产品经理</small></div></div>
+    </header>
+
+    <main class="main">
+
+    <!-- ═══ 工作台 ═══ -->
+    <section class="page on" id="work">
+      <div class="head"><div><h1>工作台</h1><div class="sub">研发任务与数字员工协同总览</div></div>
+        <div class="spacer"></div><button class="btn sm">⚙ 自定义</button></div>
+
+      <div class="grid g4">
+        <div class="card kpi"><div class="lab">运行中任务</div><div class="val blue">7</div>
+          <svg class="spark" viewBox="0 0 120 34"><polyline fill="none" stroke="#2f6bff" stroke-width="2"
+            points="0,26 15,20 30,23 45,14 60,17 75,9 90,13 105,6 120,10"/></svg>
+          <div class="dt">较昨日 <span class="up">+2 ↑</span></div></div>
+
+        <div class="card kpi"><div class="lab">待我审批</div><div class="val amber">2</div>
+          <div class="dt">最久已等 <b class="amber">3 小时 12 分</b></div>
+          <div class="note warn" style="margin-top:9px;font-size:11.5px">审批超时<b>不会</b>自动放行</div></div>
+
+        <div class="card kpi"><div class="lab">门禁一次通过率</div><div class="val" style="color:var(--ok)">76.4%</div>
+          <svg class="spark" viewBox="0 0 120 34"><polyline fill="none" stroke="#12b76a" stroke-width="2"
+            points="0,24 20,21 40,22 60,16 80,15 100,11 120,9"/></svg>
+          <div class="dt">较上周 <span class="up">+6.3% ↑</span></div></div>
+
+        <div class="card kpi"><div class="lab">平均修复轮次</div><div class="val purple">1.4</div>
+          <svg class="spark" viewBox="0 0 120 34"><polyline fill="none" stroke="#7a5af8" stroke-width="2"
+            points="0,8 20,11 40,10 60,16 80,15 100,21 120,24"/></svg>
+          <div class="dt">较上周 <span class="up">-0.5 ↓</span> · 越低越好</div></div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1.15fr .95fr .9fr;margin-top:12px">
+        <div class="card"><h3>我的任务 <span class="more">查看全部 ›</span></h3>
+          <table><thead><tr><th>任务 ID</th><th>标题</th><th>状态</th><th>阶段</th><th>更新</th></tr></thead><tbody>
+            <tr data-go="tasks"><td class="mono">ag-…-001</td><td>预占接口加 reason 字段</td>
+              <td><span class="t pur">集成测试中</span></td><td class="mono">INTEGRATION</td><td class="mono">2 分钟前</td></tr>
+            <tr data-go="tasks"><td class="mono">ag-…-002</td><td>下单写一条审计记录</td>
+              <td><span class="t warn">待审批</span></td><td class="mono">REVIEWING</td><td class="mono">18 分钟前</td></tr>
+            <tr data-go="tasks"><td class="mono">ag-…-003</td><td>订单列表分页参数校验</td>
+              <td><span class="t pri">开发中 · 第 2 轮</span></td><td class="mono">DEVELOPING</td><td class="mono">1 小时前</td></tr>
+            <tr data-go="tasks"><td class="mono">ag-…-004</td><td>清理过期优惠券</td>
+              <td><span class="t bad">已升级人工</span></td><td class="mono">ESCALATED</td><td class="mono">2 小时前</td></tr>
+          </tbody></table></div>
+
+        <div class="card"><h3>待我审批 <span class="more">查看全部 ›</span></h3>
+          <table><tbody>
+            <tr data-go="review"><td><b>下单写一条审计记录</b><div class="mono">ag-…-002</div></td>
+              <td style="text-align:right"><span class="t bad">高风险</span><div class="mono" style="margin-top:4px">3 小时 12 分</div></td></tr>
+            <tr data-go="review"><td><b>接入新的支付回调</b><div class="mono">ag-…-007</div></td>
+              <td style="text-align:right"><span class="t bad">高风险</span><div class="mono" style="margin-top:4px">1 小时 04 分</div></td></tr>
+          </tbody></table>
+          <div class="note" style="margin-top:10px">命中规则决定了它为什么要人看 —— 列表里直接标出来，不用点进去猜。</div></div>
+
+        <div class="card"><h3>系统健康 <span class="more">查看详情 ›</span></h3>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+            <span class="t ok">编排器 正常</span><span class="t ok">任务库 正常</span>
+            <span class="t ok">事件流 正常</span><span class="t warn">gitleaks 缺失</span>
+            <span class="t warn">docker 缺失</span></div>
+          <div class="note warn">两项缺失都会让任务判**环境类失败**并升级人工 —— 不会静默通过。</div>
+          <h3 style="margin:14px 0 8px">近 7 天任务趋势</h3>
+          <svg viewBox="0 0 260 70" style="width:100%;height:70px">
+            <polyline fill="none" stroke="#2f6bff" stroke-width="2" points="10,45 50,38 90,42 130,28 170,32 210,20 250,24"/>
+            <polyline fill="none" stroke="#12b76a" stroke-width="2" points="10,56 50,50 90,52 130,42 170,44 210,34 250,30"/>
+            <polyline fill="none" stroke="#f04438" stroke-width="2" points="10,64 50,63 90,65 130,62 170,64 210,63 250,64"/>
+          </svg>
+          <div style="display:flex;gap:12px;font-size:11.5px;color:var(--ink2)">
+            <span style="color:var(--pri)">— 创建</span><span style="color:var(--ok)">— 完成</span><span style="color:var(--bad)">— 升级人工</span></div>
+        </div>
+      </div>
+
+      <div class="grid g2" style="margin-top:12px">
+        <div class="card"><h3>快捷提交需求</h3>
+          <div class="sub" style="margin:-6px 0 10px">一句话说清楚要做什么。系统会先产出计划给你看，再开始写代码。</div>
+          <input placeholder="下单的时候要预占库存，库存不够直接失败并告诉用户原因…" />
+          <div style="margin-top:10px"><button class="btn pri sm" data-go="submit">用完整表单 →</button></div></div>
+
+        <div class="card"><h3>最近动态 <span class="more">查看全部 ›</span></h3>
+          <table><tbody>
+            <tr><td class="mono" style="width:52px">10:24</td><td><span class="t pur">INTEGRATION</span></td>
+              <td>预占接口加 reason 字段 <span class="mono">→ 集成测试</span></td></tr>
+            <tr><td class="mono">10:19</td><td><span class="t ok">GATE_PASS</span></td>
+              <td>单元门禁通过 <span class="mono">· 规则判定 needs_itest=yes</span></td></tr>
+            <tr><td class="mono">09:58</td><td><span class="t warn">REVIEWING</span></td>
+              <td>下单写审计记录 <span class="mono">· 命中 migrations</span></td></tr>
+            <tr><td class="mono">09:30</td><td><span class="t bad">ESCALATED</span></td>
+              <td>清理过期优惠券 <span class="mono">· 缺 gitleaks</span></td></tr>
+          </tbody></table></div>
+      </div>
+    </section>
+
+    <!-- ═══ 任务中心 ═══ -->
+    <section class="page" id="tasks">
+      <div class="head"><div><h1>任务中心</h1><div class="sub">按状态追踪任务生命周期与数字员工执行进度</div></div>
+        <div class="spacer"></div><button class="btn sm">视图 ▾</button><button class="btn pri sm">新建任务</button></div>
+
+      <div class="card" style="margin-bottom:12px;display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+        <div class="search" style="max-width:280px">🔍 搜索任务 ID、标题或关键词</div>
+        <select style="width:auto"><option>状态：全部</option></select>
+        <select style="width:auto"><option>风险等级：全部</option></select>
+        <select style="width:auto"><option>模块：全部</option></select>
+        <div class="spacer"></div><button class="btn sm">重置</button><button class="btn pri sm">筛选</button>
+      </div>
+
+      <div class="lanes">
+        <div class="lane l1"><h4>CREATED <b>1</b></h4>
+          <div class="tk" data-open><div class="r1"><span class="mono">ag-…-008</span><span class="t mute">P3</span></div>
+            <b>商品详情页缓存</b><div class="m">模块：order-service</div>
+            <div class="bar"><i style="width:0"></i></div>
+            <div class="who"><span class="a">张</span>张伟 · 待规划</div></div></div>
+
+        <div class="lane l2"><h4>DEVELOPING <b>2</b></h4>
+          <div class="tk" data-open><div class="r1"><span class="mono">ag-…-003</span><span class="t warn">第 2 轮</span></div>
+            <b>订单列表分页参数校验</b><div class="m">模块：order-service</div>
+            <div class="bar"><i style="width:45%"></i></div>
+            <div class="who"><span class="a bot">D</span>dev-employee</div></div>
+          <div class="tk" data-open><div class="r1"><span class="mono">ag-…-006</span></div>
+            <b>库存扣减幂等</b><div class="m">模块：inventory-service</div>
+            <div class="bar"><i style="width:30%"></i></div>
+            <div class="who"><span class="a bot">D</span>dev-employee</div></div></div>
+
+        <div class="lane l3"><h4>UNIT_TESTING <b>0</b></h4><div class="empty">空</div></div>
+
+        <div class="lane l4"><h4>INTEGRATION_TESTING <b>1</b></h4>
+          <div class="tk" data-open><div class="r1"><span class="mono">ag-…-001</span><span class="t pur">跑着</span></div>
+            <b>预占接口加 reason 字段</b><div class="m">模块：order · inventory</div>
+            <div class="bar"><i style="width:70%"></i></div>
+            <div class="who"><span class="a bot">I</span>itest-employee</div></div></div>
+
+        <div class="lane l5"><h4>REVIEWING <b>2</b></h4>
+          <div class="tk" data-open><div class="r1"><span class="mono">ag-…-002</span><span class="t bad">高风险</span></div>
+            <b>下单写一条审计记录</b><div class="m">命中：migrations</div>
+            <div class="bar"><i style="width:100%;background:var(--warn)"></i></div>
+            <div class="who"><span class="a">张</span>等张伟审批 · 3h12m</div></div>
+          <div class="tk" data-open><div class="r1"><span class="mono">ag-…-007</span><span class="t bad">高风险</span></div>
+            <b>接入新的支付回调</b><div class="m">命中：auth</div>
+            <div class="bar"><i style="width:100%;background:var(--warn)"></i></div>
+            <div class="who"><span class="a">张</span>等张伟审批 · 1h04m</div></div></div>
+
+        <div class="lane l6"><h4>MERGING <b>0</b></h4><div class="empty">空</div></div>
+
+        <div class="lane l7 term"><h4>ESCALATED <b>1</b></h4>
+          <div class="tk" data-open><div class="r1"><span class="mono">ag-…-004</span><span class="t bad">需人接手</span></div>
+            <b>清理过期优惠券</b><div class="m">环境类失败：缺 gitleaks</div>
+            <div class="who">🔒 现场已冻结</div></div></div>
+
+        <div class="lane term"><h4>已结束 <b>18</b></h4>
+          <div class="tk"><b style="font-size:12.5px">COMPLETED 17</b><div class="m">CANCELLED 1</div>
+            <div style="margin-top:6px"><button class="btn sm">展开 ›</button></div></div></div>
+      </div>
+
+      <div class="grid g3" style="margin-top:12px">
+        <div class="card"><h3>任务状态概览</h3>
+          <div style="display:flex;gap:16px;align-items:center">
+            <svg viewBox="0 0 42 42" style="width:104px;height:104px;flex:none">
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="#e8ecf3" stroke-width="6"/>
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="#12b76a" stroke-width="6"
+                stroke-dasharray="68 32" stroke-dashoffset="25"/>
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="#2f6bff" stroke-width="6"
+                stroke-dasharray="12 88" stroke-dashoffset="-43"/>
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="#f79009" stroke-width="6"
+                stroke-dasharray="8 92" stroke-dashoffset="-55"/>
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="#f04438" stroke-width="6"
+                stroke-dasharray="4 96" stroke-dashoffset="-63"/>
+              <text x="21" y="20" text-anchor="middle" font-size="6" fill="#1d2129" font-weight="700">25</text>
+              <text x="21" y="26" text-anchor="middle" font-size="3" fill="#98a1b3">总任务</text></svg>
+            <table style="font-size:12px"><tbody>
+              <tr><td>● 已完成</td><td class="mono">17</td><td class="mono">68%</td></tr>
+              <tr><td style="color:var(--pri)">● 进行中</td><td class="mono">3</td><td class="mono">12%</td></tr>
+              <tr><td style="color:var(--warn)">● 待审批</td><td class="mono">2</td><td class="mono">8%</td></tr>
+              <tr><td style="color:var(--bad)">● 升级人工</td><td class="mono">1</td><td class="mono">4%</td></tr>
+            </tbody></table></div></div>
+
+        <div class="card"><h3>风险等级分布</h3>
+          <div class="grid g2" style="gap:9px">
+            <div style="background:var(--bad-bg);border-radius:9px;padding:12px">
+              <div class="val" style="font-size:24px;font-weight:700;color:var(--bad)">2</div>
+              <div style="font-size:12px;color:var(--ink2)">高风险 · 需人工审批</div></div>
+            <div style="background:var(--ok-bg);border-radius:9px;padding:12px">
+              <div class="val" style="font-size:24px;font-weight:700;color:var(--ok)">23</div>
+              <div style="font-size:12px;color:var(--ink2)">低风险 · 自动合并</div></div></div>
+          <div class="note" style="margin-top:10px">只有两档。**没有 0–100 的分数**——评级是「命中了哪条规则」，不是一个连续量。</div></div>
+
+        <div class="card"><h3>命中的高风险规则</h3>
+          <table><tbody>
+            <tr><td>migrations</td><td class="mono" style="text-align:right">7</td></tr>
+            <tr><td>auth</td><td class="mono" style="text-align:right">4</td></tr>
+            <tr><td>interface-schema</td><td class="mono" style="text-align:right">3</td></tr>
+            <tr><td>deploy</td><td class="mono" style="text-align:right">2</td></tr>
+            <tr><td>mass-deletion</td><td class="mono" style="text-align:right">0</td></tr>
+          </tbody></table></div>
+      </div>
+
+      <!-- 任务详情 -->
+      <div id="detail" style="display:none;margin-top:18px">
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="padding:16px 18px;border-bottom:1px solid var(--line)">
+            <div class="sub" style="margin:0 0 6px">任务中心 / 任务详情</div>
+            <div class="head" style="margin:0">
+              <div><h1 style="font-size:18px">ag-20260809-001 · 预占接口加 reason 字段</h1>
+                <div style="display:flex;gap:7px;margin-top:8px">
+                  <span class="t pur">INTEGRATION_TESTING</span><span class="t mute">P1</span>
+                  <span class="t pri">order-service · inventory-service</span><span class="t ok">低风险</span></div></div>
+              <div class="spacer"></div>
+              <button class="btn sm">复制任务 ID</button><button class="btn pri sm">打开任务操作 ▾</button></div>
+          </div>
+
+          <div style="padding:16px 18px">
+            <div class="tabs">
+              <button class="on" data-tab="ov">概览</button><button data-tab="log">日志流</button>
+              <button data-tab="df">变更 Diff</button><button data-tab="ar">产物</button>
+              <button data-tab="rp">报告</button><button data-tab="au">审计</button></div>
+
+            <div class="pane on" id="p-ov">
+              <div class="card" style="box-shadow:none;margin-bottom:12px">
+                <h3>任务生命周期 <span class="more">已运行 21 分 18 秒</span></h3>
+                <div class="steps">
+                  <div class="s done"><div class="dot">✓</div><div class="lb">CREATED</div><div class="tm">10:00</div></div>
+                  <div class="s done"><div class="dot">✓</div><div class="lb">DEVELOPING</div><div class="tm">10:02</div></div>
+                  <div class="s done"><div class="dot">✓</div><div class="lb">UNIT_TESTING</div><div class="tm">10:12</div></div>
+                  <div class="s now"><div class="dot">4</div><div class="lb">INTEGRATION</div><div class="tm">当前阶段</div></div>
+                  <div class="s"><div class="dot">5</div><div class="lb">READY_TO_COMMIT</div><div class="tm">确定性关卡</div></div>
+                  <div class="s"><div class="dot">6</div><div class="lb">MERGING</div><div class="tm">—</div></div>
+                  <div class="s"><div class="dot">7</div><div class="lb">COMPLETED</div><div class="tm">—</div></div>
+                </div>
+              </div>
+
+              <div class="grid" style="grid-template-columns:1fr 300px">
+                <div>
+                  <div class="card" style="box-shadow:none">
+                    <h3>实时日志流
+                      <span class="more"><button class="btn sm" onclick="dropSse()">模拟断线</button></span></h3>
+                    <pre class="log" id="logbox"><span class="ts">10:20:03</span> <span class="lv i">INFO</span> 拉起集成环境 compose -p ag-ag-20260809-001
+<span class="ts">10:20:04</span> <span class="lv i">INFO</span> 构建闭包：inventory-service order-service
+<span class="ts">10:20:41</span> <span class="lv d">DEBUG</span> up -d --wait（等健康检查）
+<span class="ts">10:21:02</span> <span class="lv w">WARN</span> order-service 首次健康检查未通过，重试
+<span class="ts">10:21:12</span> <span class="lv i">INFO</span> run --rm -T order-service pytest -q itest
+<span class="ts">10:21:19</span> <span class="lv e">ERROR</span> AssertionError: reason 字段缺失
+<span class="ts">10:21:20</span> <span class="lv i">INFO</span> 收全部服务日志 → 归档 logs/
+<span class="ts">10:21:21</span> <span class="lv i">INFO</span> down -v（finally，无论成败）</pre>
+                    <div class="note" id="ssenote" style="margin-top:10px">已显示最新 200 条，共 12,483 条 · 推送只报「有新的了」，数据靠拉取</div>
+                  </div>
+
+                  <div class="card" style="box-shadow:none;margin-top:12px">
+                    <h3>数字员工执行记录</h3>
+                    <table><tbody>
+                      <tr><td><span class="t pur">arch-employee</span></td><td>requirement-analysis@1.0.0</td>
+                        <td class="mono">10:00</td><td><span class="t ok">已完成</span></td></tr>
+                      <tr><td><span class="t pur">dev-employee</span></td><td>code-develop@1.0.0</td>
+                        <td class="mono">10:02</td><td><span class="t ok">已完成</span></td></tr>
+                      <tr><td><span class="t mute">gate-runner</span></td><td>unit-gate@1.0.0 · 零 token</td>
+                        <td class="mono">10:12</td><td><span class="t ok">通过</span></td></tr>
+                      <tr><td><span class="t pur">arch-employee</span></td><td>itest-decide · 规则命中，未派发</td>
+                        <td class="mono">10:19</td><td><span class="t mute">跳过</span></td></tr>
+                      <tr><td><span class="t pur">itest-employee</span></td><td>itest-run@1.0.0（hybrid）</td>
+                        <td class="mono">10:20</td><td><span class="t pri">执行中</span></td></tr>
+                    </tbody></table>
+                    <div class="note" style="margin-top:10px">只有三个数字员工。**门禁与提交前检查是脚本，不是员工**——让被检查的人检查自己是荒谬的。</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="card" style="box-shadow:none"><h3>基本信息</h3>
+                    <div class="kv"><span class="k">任务 ID</span><span class="v mono">ag-20260809-001</span></div>
+                    <div class="kv"><span class="k">创建人</span><span class="v">张伟（产品）</span></div>
+                    <div class="kv"><span class="k">分支</span><span class="v mono">task/ag-20260809-001</span></div>
+                    <div class="kv"><span class="k">集成测试</span><span class="v">yes · 规则判定</span></div>
+                    <div class="kv"><span class="k">命中规则</span><span class="v mono">interface-schema, cross-module</span></div>
+                    <div class="kv"><span class="k">修复轮次</span><span class="v">0 / 3</span></div>
+                  </div>
+                  <div class="card" style="box-shadow:none;margin-top:12px"><h3>Token 成本</h3>
+                    <div class="kv"><span class="k">已消耗</span><span class="v"><b>48,210</b></span></div>
+                    <div class="kv"><span class="k">任务预算</span><span class="v mono">1,500,000</span></div>
+                    <div class="kv"><span class="k">按员工</span><span class="v">arch 12k · dev 36k</span></div>
+                    <div class="note warn" style="margin-top:9px">预算是**硬上限**：装不下下一个 Job 就升级人工，不夹。</div>
+                  </div>
+                  <div class="card" style="box-shadow:none;margin-top:12px"><h3>干预操作</h3>
+                    <button class="btn bad blk">取消任务</button>
+                    <button class="btn blk">强制跳过集成测试</button>
+                    <button class="btn blk">手工重跑集成测试</button>
+                    <div class="note" style="margin-top:4px">手工重跑<b>不驱动状态机</b>——它是一次观察，不是一次判定。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pane" id="p-log"><div class="empty">切到「概览」看嵌入的实时日志流</div></div>
+
+            <div class="pane" id="p-df">
+              <div class="diff">
+                <div class="fh">📄 code-2/api/reserve.yaml <span class="st"><span style="color:#0a7a48">+4</span> <span style="color:#b42318">−1</span></span></div>
+                <div class="l del">-       required: [sku, count]</div>
+                <div class="l add">+       required: [sku, count, reason]</div>
+                <div class="l add">+       reason:</div>
+                <div class="l add">+         type: string</div>
+                <div class="l add">+         description: 预占原因，用于对账</div>
+              </div>
+              <div class="diff" style="margin-top:10px">
+                <div class="fh">📄 code-1/tests/test_reserve.py <span class="st"><span style="color:#0a7a48">+6</span></span></div>
+                <div class="l add">+ def test_reserve_carries_reason():</div>
+                <div class="l add">+     assert reserve(sku="a", count=1, reason="下单").ok</div>
+              </div>
+              <div class="note" style="margin-top:10px">碰了 <b>interfaces[].schema</b> → 影响规则 <code>interface-schema</code> 命中 → 集成测试必跑。</div>
+            </div>
+
+            <div class="pane" id="p-ar">
+              <table><thead><tr><th>产物目录</th><th>文件</th><th>大小</th><th>结果</th></tr></thead><tbody>
+                <tr><td class="mono">01-plan/</td><td>result.json · plan.yaml</td><td class="mono">8.4 KB</td><td><span class="t ok">通过</span></td></tr>
+                <tr><td class="mono">02-develop/</td><td>result.json · context-attempt-0.md</td><td class="mono">22.1 KB</td><td><span class="t ok">通过</span></td></tr>
+                <tr><td class="mono">03-unit-gate/</td><td>gate-report.json · logs/unit.log</td><td class="mono">12.4 KB</td><td><span class="t ok">通过</span></td></tr>
+                <tr><td class="mono">04-itest/</td><td>itest-report.json · logs/×2</td><td class="mono">28.7 KB</td><td><span class="t pri">执行中</span></td></tr>
+              </tbody></table>
+              <div class="note" style="margin-top:10px">序号即轮次：某个 stage 的第 k 个目录就是它的第 k 轮。这条不变式让崩溃恢复能认出「这一轮跑过没有」。</div>
+            </div>
+
+            <div class="pane" id="p-rp"><div class="card" style="box-shadow:none">
+              <h3>report.md（终态生成，可直接贴进 PR）</h3>
+              <pre class="log" style="max-height:220px"># ag-20260809-001 · INTEGRATION_TESTING
+
+**预占接口加 reason 字段**
+
+## 需求原文
+预占接口加一个 reason 字段
+
+## 计划
+涉及模块：order-service, inventory-service
+验收标准：
+- 预占接口新增 reason 字段
+
+## 经过
+1. CREATED → DEVELOPING（plan_done）
+2. DEVELOPING → UNIT_TESTING（dev_done）
+3. UNIT_TESTING → INTEGRATION_TESTING（gate_pass）
+修复轮次：**0**</pre>
+              <div class="note" style="margin-top:10px">**确定性渲染，不用 Agent 写摘要**——报告的价值在准确而非文采。</div></div></div>
+
+            <div class="pane" id="p-au">
+              <table><thead><tr><th>时间</th><th>actor</th><th>事件</th><th>skill@version</th></tr></thead><tbody>
+                <tr><td class="mono">10:00:03</td><td>orchestrator</td><td>task_created</td><td class="mono">—</td></tr>
+                <tr><td class="mono">10:00:04</td><td>arch-employee</td><td>job_started</td><td class="mono">requirement-analysis@1.0.0</td></tr>
+                <tr><td class="mono">10:19:41</td><td>orchestrator</td><td>itest_decision</td><td class="mono">source=rule</td></tr>
+                <tr><td class="mono">10:20:01</td><td>itest-employee</td><td>job_started</td><td class="mono">itest-run@1.0.0</td></tr>
+              </tbody></table>
+              <div class="note" style="margin-top:10px">每一次写操作都带 <b>actor</b>——「这一步是人做的还是机器做的」是审计第一个要问的问题。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 审批中心 ═══ -->
+    <section class="page" id="review">
+      <div class="head"><div><h1>审批中心</h1><div class="sub">集中处理高风险任务的审批 —— 一屏做完决策</div></div></div>
+
+      <div class="grid" style="grid-template-columns:270px 1fr 268px;align-items:start">
+        <!-- 队列 -->
+        <div class="card" style="padding:10px">
+          <div class="tabs" style="margin-bottom:8px"><button class="on">待我审批 2</button><button>已处理</button></div>
+          <div class="tk" style="border-color:var(--pri);background:var(--pri-bg)">
+            <div class="r1"><span class="t bad">高风险</span><span class="t mute">migrations</span></div>
+            <b>下单写一条审计记录</b><div class="m mono">ag-…-002 · 已等 3 小时 12 分</div></div>
+          <div class="tk"><div class="r1"><span class="t bad">高风险</span><span class="t mute">auth</span></div>
+            <b>接入新的支付回调</b><div class="m mono">ag-…-007 · 已等 1 小时 04 分</div></div>
+          <div class="note" style="margin-top:8px;font-size:11.5px">**超时不自动放行**。队列积压会出现在观测中心的指标里。</div>
+        </div>
+
+        <!-- 详情 -->
+        <div>
+          <div class="card">
+            <h3>任务摘要 <span class="more">ag-20260809-002 · 申请于 09:58</span></h3>
+            <div class="grid g2" style="gap:14px">
+              <div>
+                <div class="kv"><span class="k">改动</span><span class="v">下单成功时写入一条审计记录</span></div>
+                <div class="kv"><span class="k">涉及模块</span><span class="v mono">order-service</span></div>
+                <div class="kv"><span class="k">变更文件</span><span class="v">2 个 · +11 / −0</span></div>
+                <div class="kv"><span class="k">修复轮次</span><span class="v">1 轮（第 1 轮门禁挂了）</span></div>
+              </div>
+              <div style="background:var(--bad-bg);border-radius:9px;padding:13px">
+                <div style="font-size:12.5px;color:var(--ink2);margin-bottom:6px">风险评级</div>
+                <div style="font-size:22px;font-weight:700;color:var(--bad);margin-bottom:8px">高风险</div>
+                <div style="font-size:12px;color:var(--ink2)">命中规则：<b>migrations</b>（不可逆）</div>
+                <div style="font-size:11.5px;color:var(--ink3);margin-top:6px">评级是二值 + 命中规则，没有 0–100 的分数</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px"><h3>代码变更 <span class="more">2 个文件 · 展开全部 ›</span></h3>
+            <div class="diff">
+              <div class="fh">📄 code-1/migrations/0002_audit.sql <span class="t bad" style="margin-left:6px">命中 migrations</span>
+                <span class="st"><span style="color:#0a7a48">+5</span></span></div>
+              <div class="l add">+ create table order_audit (</div>
+              <div class="l add">+   id bigserial primary key,</div>
+              <div class="l add">+   order_id bigint not null,</div>
+              <div class="l add">+   created_at timestamptz default now()</div>
+              <div class="l add">+ );</div>
+            </div>
+            <div class="diff" style="margin-top:10px">
+              <div class="fh">📄 code-1/src/order/service.py <span class="st"><span style="color:#0a7a48">+6</span></span></div>
+              <div class="l add">+     audit.record(order.id, "created")</div>
+            </div>
+          </div>
+
+          <div class="grid g2" style="margin-top:12px">
+            <div class="card"><h3>质量门禁</h3>
+              <table><tbody>
+                <tr><td>单元测试</td><td><span class="t ok">通过</span></td><td class="mono">48/48</td></tr>
+                <tr><td>密钥扫描</td><td><span class="t ok">通过</span></td><td class="mono">gitleaks</td></tr>
+                <tr><td>越权复查</td><td><span class="t ok">通过</span></td><td class="mono">2 个路径</td></tr>
+                <tr><td>集成测试</td><td><span class="t mute">未跑</span></td><td class="mono">人工 never</td></tr>
+              </tbody></table></div>
+            <div class="card"><h3>验收标准（来自计划产物）</h3>
+              <div class="cbs">
+                <label><input type="checkbox" /> 下单成功时写入一条审计记录</label>
+                <label><input type="checkbox" /> 审计写入失败不影响下单主流程</label></div>
+              <div style="margin-top:8px"><a class="t pri" href="#">gate-report.json ↗</a>
+                <a class="t pri" href="#">report.md ↗</a></div></div>
+          </div>
+        </div>
+
+        <!-- 决策（吸顶） -->
+        <div style="position:sticky;top:14px">
+          <div class="card"><h3>审批操作</h3>
+            <button class="btn ok blk">✓ 通过审批</button>
+            <button class="btn bad blk" onclick="tryReject()">✕ 驳回并填写意见</button>
+            <button class="btn blk">↪ 转交他人</button>
+
+            <label>驳回原因 <span class="req">*</span></label>
+            <div class="cbs">
+              <label><input type="checkbox" class="rr" /> 功能需求不完整</label>
+              <label><input type="checkbox" class="rr" /> 技术方案存在风险</label>
+              <label><input type="checkbox" class="rr" /> 测试覆盖不足</label>
+              <label><input type="checkbox" class="rr" /> 影响范围评估不清晰</label>
+              <label><input type="checkbox" class="rr" /> 其他</label></div>
+
+            <label>详细说明 <span class="req">*</span></label>
+            <textarea id="rej" placeholder="具体到哪一行、期望是什么 —— 这段会置顶进下一轮开发的上下文"></textarea>
+            <div class="cnt">0 / 500</div>
+            <div class="err" id="rejerr">驳回必须填意见。没有意见的驳回对下一轮没有任何价值 —— 员工只知道人不满意，不知道哪里不满意。</div>
+            <div class="note" style="margin-top:10px;font-size:11.5px">勾选项 + 说明会一起结构化回注。**这是人的判断唯一能直接影响下一轮的通道。**</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 对话工作台 ═══ -->
+    <section class="page" id="chat">
+      <div class="chat">
+
+        <!-- ── 会话列表 ── -->
+        <div class="col">
+          <div class="ch">
+            <h3>会话 <span class="more" style="margin-left:auto;font-size:11.5px;color:var(--ink3);font-weight:400">共 24 条</span></h3>
+            <div class="chips" style="margin-top:9px;gap:6px">
+              <span class="on" style="padding:3px 10px;font-size:11.5px">全部</span>
+              <span style="padding:3px 10px;font-size:11.5px">进行中 6</span>
+              <span style="padding:3px 10px;font-size:11.5px">已挂起 2</span>
+              <!-- 回放 = 进入已结束会话的只读视图,和这档筛选是同一件事,不再另设一个
+                   "↺ 会话回放"按钮。 -->
+              <span style="padding:3px 10px;font-size:11.5px">已结束 16</span>
+            </div>
+            <!-- 新建会话是这个列表自己的动作,不是整页的——进页面就在视野里,不用先看
+                 完页头才找到入口。 -->
+            <button class="btn sm pri" style="margin-top:8px;width:100%" onclick="newSes()">＋ 新建会话</button>
+          </div>
+          <div class="cb">
+            <div class="ses on">
+              <div class="r1" style="display:flex;gap:5px;align-items:center">
+                <span class="t pur">质询</span><span class="t mute">只读</span>
+                <span class="t ok" style="margin-left:auto">进行中</span></div>
+              <b>下单写一条审计记录 · 为什么这么改</b>
+              <div class="m mono">开发员工 · ag-20260809-002 · 10:22</div>
+              <div class="q">这次改动为什么要新建一张表而不是复用…</div>
+            </div>
+
+            <div class="ses">
+              <div class="r1" style="display:flex;gap:5px;align-items:center">
+                <span class="t pri">咨询</span><span class="t mute">只读</span>
+                <span class="t mute" style="margin-left:auto">已结束</span></div>
+              <b>预占失败后的补偿策略</b>
+              <div class="m mono">架构员工 · 昨天 18:46</div>
+              <div class="q">预占失败后的补偿策略在极端场景下是否…</div>
+            </div>
+
+            <!-- 已挂起要能一眼看出**为什么**挂起，否则用户只会觉得「它坏了」 -->
+            <div class="ses">
+              <div class="r1" style="display:flex;gap:5px;align-items:center">
+                <span class="t warn">结对</span><span class="t mute">可写</span>
+                <span class="t warn" style="margin-left:auto">已挂起</span></div>
+              <b>用户权限模块优化</b>
+              <div class="m mono">开发员工 · ag-20260809-011 · 空闲 30 分钟自动挂起</div>
+              <div class="q">帮我一起优化权限校验链路的重复逻辑</div>
+            </div>
+
+            <div class="ses">
+              <div class="r1" style="display:flex;gap:5px;align-items:center">
+                <span class="t pri">咨询</span><span class="t mute">只读</span>
+                <span class="t mute" style="margin-left:auto">已结束</span></div>
+              <b>规则冲突分析</b>
+              <div class="m mono">架构员工 · 08-08 09:24</div>
+              <div class="q">impact.yaml 与 protected.yaml 的重叠…</div>
+            </div>
+
+            <div class="note" style="font-size:11px;margin-top:4px">
+              模式在<b>创建时确定，之后不可变</b>。咨询/质询只读、结对可写 —— 会话中途改模式等于一次没有闸门的提权。
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 对话流 ── -->
+        <div class="col">
+          <div class="ch">
+            <h3>下单写一条审计记录 · 为什么这么改
+              <span class="t pur" style="margin-left:4px">质询</span>
+              <span class="t mute">只读</span>
+              <span class="more" style="margin-left:auto;font-size:11px;color:var(--ink3);font-weight:400">
+                sess-20260809-004</span></h3>
+            <div class="sb">关联任务 <a href="#" data-go="review" style="color:var(--pri)">ag-20260809-002 ›</a>
+              · 审批中 · 预载了该任务的全部产物与日志</div>
+          </div>
+
+          <!-- 上下文条：**输入**面 —— 员工带着什么在回答，可增删可钉住 -->
+          <div class="ctx">
+            <div class="lb">🧩 已装载 <span style="color:var(--ink2)">可增删 · 可钉住</span>
+              <span style="margin-left:auto;color:var(--pri);cursor:pointer">＋ 添加上下文</span></div>
+            <div class="cs">
+              <span class="cp">📋 任务 ag-20260809-002 <x>×</x></span>
+              <span class="cp">📄 gate-report.json <x>×</x></span>
+              <span class="cp pin">📌 rules/architecture.md</span>
+              <span class="cp">🧬 知识卡片 audit-trail <x>×</x></span>
+              <span class="cp">📁 code-1/src/order/service.py <x>×</x></span>
+              <span class="cp cut">+2 已按命中数截断</span>
+            </div>
+          </div>
+
+          <div class="cb">
+            <div class="older"><button>↑ 载入更早的 18 条消息</button></div>
+
+            <div class="msg u"><div class="bb">这个任务风险评级是高，我看 diff 只有 11 行。为什么算高风险？</div></div>
+
+            <div class="msg a">
+              <div class="hd"><span class="a">架</span><b style="font-weight:600;color:var(--ink)">开发员工</b>
+                <span style="color:var(--ink3)">10:22</span></div>
+              <div class="bd">
+                <p>风险评级不看行数，看<b>命中了哪条规则</b>。这次 diff 里有
+                  <code class="mono">code-1/migrations/0002_audit.sql</code>，命中 protected.yaml 的
+                  <code class="mono">migrations/</code> 模式 —— 该模式被标为不可逆，一律判高风险。</p>
+                <div class="blk"><div class="bh">🧬 知识卡片 <span class="r">命中 17 次 · 置信度 高</span></div>
+                  <div class="bc" style="padding:9px 10px">
+                    <b style="font-size:12.5px">audit-trail</b>
+                    <div style="color:var(--ink2);font-size:12px;margin-top:3px">
+                      审计记录一律独立成表，不复用业务表 —— 业务表的保留期与审计要求不同</div>
+                    <div style="margin-top:7px"><span class="t ok">置信度 高</span>
+                      <a href="#" style="color:var(--pri);font-size:11.5px;margin-left:8px">展开全文 ›</a></div>
+                  </div></div>
+              </div>
+            </div>
+
+            <div class="msg u"><div class="bb">那为什么新建一张表，不复用 order 表加几个字段？</div></div>
+
+            <div class="msg a">
+              <div class="hd"><span class="a">架</span><b style="font-weight:600;color:var(--ink)">开发员工</b>
+                <span style="color:var(--ink3)">10:24</span>
+                <span class="t mute" style="margin-left:6px">已完成</span></div>
+              <div class="bd">
+
+                <!-- 工具步骤：**信任的来源**。必须显示具体读了什么，「正在思考…」等于没画 -->
+                <div class="blk"><div class="bh">🔍 查证过程 · 3 步 <span class="r">用时 4.2s · 展开 ▾</span></div>
+                  <div>
+                    <div class="tool"><span class="ok">✓</span><span class="mono">已读 genome/knowledge/modules/order-service/features/audit-trail.md</span></div>
+                    <div class="tool"><span class="ok">✓</span><span class="mono">已读 genome/rules/architecture.md（第 42–58 行）</span></div>
+                    <div class="tool"><span class="ok">✓</span><span class="mono">已搜索 "order_audit" — 命中 3 处</span></div>
+                  </div></div>
+
+                <p>三条理由，都能落到证据上：<b>①</b> 架构规则禁止业务表承载审计语义；
+                  <b>②</b> order 表已有 34 个字段，再加会越过 rules/coding.md 的宽表阈值；
+                  <b>③</b> 审计表保留期 5 年，order 表 18 个月归档 —— 混在一起没法分别过期。</p>
+
+                <div class="acts">
+                  <span class="fref">📁 code-1/migrations/0002_audit.sql</span>
+                  <span class="fref">📁 code-1/src/order/service.py:118</span>
+                </div>
+
+                <div class="blk"><div class="bh">📋 任务卡 <span class="r">ag-20260809-002</span></div>
+                  <div class="bc" style="padding:0">
+                    <table><tbody><tr>
+                      <td style="width:34%">下单写一条审计记录</td>
+                      <td><span class="t warn">REVIEWING 审批中</span></td>
+                      <td><span class="t bad">高风险</span></td>
+                      <td class="mono">修复 1/3 轮</td>
+                      <td><a href="#" data-go="review" style="color:var(--pri)">打开 ›</a></td>
+                    </tr></tbody></table>
+                  </div></div>
+
+                <div class="blk"><div class="bh">📝 代码变更 <span class="r">2 个文件 · +11 / −0</span></div>
+                  <div class="bc" style="padding:0">
+                    <div class="diff" style="border:0;border-radius:0">
+                      <div class="fh">📄 code-1/migrations/0002_audit.sql
+                        <span class="t bad" style="margin-left:6px">命中 migrations</span>
+                        <span class="st"><span style="color:#0a7a48">+5</span></span></div>
+                      <div class="l add">+ create table order_audit (</div>
+                      <div class="l add">+   id bigserial primary key,</div>
+                      <div class="l add">+   order_id bigint not null,</div>
+                      <div class="l add">+   created_at timestamptz default now()</div>
+                      <div class="l add">+ );</div>
+                    </div>
+                  </div></div>
+
+                <!-- 门禁**只出现在这里一次**。右栏不再重复一份格式不同的。 -->
+                <div class="blk"><div class="bh">🛡 门禁结果 <span class="r">来自 gate-report.json · 10:18</span></div>
+                  <div class="bc" style="padding:0">
+                    <table><tbody>
+                      <tr><td>单元测试</td><td><span class="t ok">通过</span></td><td class="mono">48/48</td></tr>
+                      <tr><td>静态检查</td><td><span class="t ok">通过</span></td><td class="mono">ruff</td></tr>
+                      <tr><td>密钥扫描</td><td><span class="t ok">通过</span></td><td class="mono">gitleaks</td></tr>
+                      <tr><td>集成测试</td><td><span class="t mute">未跑</span></td><td class="mono">规则判定 no</td></tr>
+                    </tbody></table>
+                  </div></div>
+                <div class="note" style="font-size:11px;margin:-3px 0 9px">
+                  门禁全绿 + 命中 migrations → risk=high → REVIEWING。<b>这一组状态是自洽的</b> ——
+                  集测若失败，状态机会退回 DEVELOPING，不可能停在审批中。
+                </div>
+
+                <!-- 出口按模式而定：质询→回注，咨询→转任务，结对→提交进流水线 -->
+                <div class="acts">
+                  <button class="btn sm pri" onclick="showDraft()">↩ 作为审批意见回注</button>
+                  <button class="btn sm">↩ 作为驳回意见回注</button>
+                  <button class="btn sm">🧬 展开更多知识</button>
+                </div>
+
+                <div class="fb">这条回答有用吗？
+                  <button onclick="hit(this)">👍 有用</button><button>👎 没用</button>
+                  <span class="sp" id="hitnote">有用 → 命中的知识卡片 hits +1（§10.2 自然选择）</span></div>
+              </div>
+            </div>
+
+            <!-- 内联草稿卡：**确认之前不落库**。弹窗会盖住上文，而用户正要对照上文改它 -->
+            <div class="draft" id="draft" style="display:none">
+              <h5>↩ 审批意见草稿 <span class="t mute" style="margin-left:auto;font-weight:400">尚未提交</span></h5>
+              <div class="lb">意见正文（可改）</div>
+              <textarea>高风险来自 migrations 命中，非改动规模。独立审计表符合 architecture.md 与保留期要求，理由已核实（见会话 sess-20260809-004）。同意合并。</textarea>
+              <div class="lb">附带</div>
+              <div><span class="cp">🔗 本次质询会话</span> <span class="cp">📄 gate-report.json</span></div>
+              <div class="acts" style="margin-top:10px">
+                <button class="btn sm pri" onclick="alert('已回注到 ag-20260809-002 的审批意见。审批人身份仍由服务端二次校验 —— 会话不构成身份旁路。')">确认回注</button>
+                <button class="btn sm" onclick="document.getElementById('draft').style.display='none'">取消</button>
+                <span style="font-size:11px;color:var(--ink2);align-self:center">确认前不写入任何审批记录</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="cf">
+            <div class="composer">
+              <textarea placeholder="继续追问…　@员工 引用同事　#任务 引用任务　/ 指令"></textarea>
+              <div class="crow">
+                <button class="btn sm">📎</button><button class="btn sm">@ 员工</button><button class="btn sm">/ 指令</button>
+                <span class="sp"></span>
+                <button class="btn sm bad">■ 停止生成</button>
+                <button class="btn sm">↻ 重新生成</button>
+                <button class="btn sm pri">发送 ➤</button>
+              </div>
+            </div>
+            <!-- 预算与超时必须可见：否则用户会毫无征兆地被挂起 -->
+            <div class="budget">
+              <span>会话预算</span><span class="bar" style="width:120px"><i style="width:25%"></i></span>
+              <span class="mono">12.4k / 50k tokens</span>
+              <span>·</span><span>空闲 30 分钟自动挂起</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 证据面板 ── -->
+        <div class="col">
+          <div class="ch">
+            <h3>证据面板</h3>
+            <div class="sb"><b>输出</b>面 —— 本次对话引用过的材料，只读累积</div>
+            <div class="tabs" style="margin:9px 0 0;border-bottom:0">
+              <button class="on" data-ctab="ev" style="padding:5px 10px;font-size:12px">引用证据</button>
+              <button data-ctab="mt" style="padding:5px 10px;font-size:12px">会话信息</button>
+            </div>
+          </div>
+          <div class="cb">
+            <div class="cpane on" id="c-ev">
+              <div class="grp"><div class="gh">🧬 <b>知识卡片</b> 2</div>
+                <div class="ev"><b>audit-trail</b>
+                  <div class="m">命中 17 次 · 置信度 高 · 更新于 08-05</div></div>
+                <div class="ev"><b>ADR-0012 审计表独立</b>
+                  <div class="m">决策记录 · 引用 1 次</div></div>
+              </div>
+              <div class="grp"><div class="gh">📁 <b>文件</b> 3</div>
+                <div class="ev"><span class="mono">code-1/migrations/0002_audit.sql</span></div>
+                <div class="ev"><span class="mono">code-1/src/order/service.py</span></div>
+                <div class="ev"><span class="mono">genome/rules/architecture.md</span></div>
+              </div>
+              <div class="grp"><div class="gh">📦 <b>任务产物</b> 2</div>
+                <div class="ev"><span class="mono">gate-report.json</span><div class="m">10:18 生成</div></div>
+                <div class="ev"><span class="mono">result.json</span><div class="m">10:11 生成</div></div>
+              </div>
+              <div class="note" style="font-size:11px">
+                与上方<b>上下文条</b>的区别：那里是<b>输入</b>（带着什么在回答，可增删）；这里是<b>输出</b>（已经引用过什么，只累积不可改）。
+              </div>
+            </div>
+
+            <div class="cpane" id="c-mt" style="display:none">
+              <div class="kv"><span class="k">模式</span><span class="v">质询（只读，不可变）</span></div>
+              <div class="kv"><span class="k">员工</span><span class="v">开发员工</span></div>
+              <div class="kv"><span class="k">工具集</span><span class="v mono">Read · Grep · Glob</span></div>
+              <div class="kv"><span class="k">关联任务</span><span class="v mono">ag-20260809-002</span></div>
+              <div class="kv"><span class="k">已用</span><span class="v mono">12.4k / 50k tokens</span></div>
+              <div class="kv"><span class="k">空闲挂起</span><span class="v">30 分钟</span></div>
+              <div class="gh" style="margin:14px 0 7px;font-size:11.5px;color:var(--ink3)">三平面记录（无例外）</div>
+              <div class="ev"><b>事件面</b><div class="m">会话创建/结束/挂起 · 4 条</div></div>
+              <div class="ev"><b>日志面</b><div class="m mono">sessions/sess-20260809-004/messages.jsonl</div></div>
+              <div class="ev"><b>版本面</b><div class="m">质询只读，本次无版本面记录</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 三种模式的出口 ── -->
+      <div class="card" style="margin-top:12px">
+        <h3>三种模式的出口不同 <span class="more">同一套块渲染器，出口按模式而定</span></h3>
+        <div class="grid g3">
+          <div style="border:1px solid var(--line);border-radius:9px;padding:11px 12px">
+            <div><span class="t pri">咨询 consult</span> <span class="t mute">只读</span></div>
+            <div style="font-size:12px;color:var(--ink2);margin:8px 0">提需求之前先问清楚</div>
+            <div class="note" style="font-size:11.5px">出口：<b>转为任务</b> —— 内联需求草稿卡（标题/需求/模块预填、可编辑），
+              <b>确认后才建任务</b>。自动建任务会让「随口问一句」变成「莫名多了个任务」。</div>
+          </div>
+          <div style="border:1px solid var(--pur);border-radius:9px;padding:11px 12px;background:var(--pur-bg)">
+            <div><span class="t pur">质询 inquiry</span> <span class="t mute">只读</span></div>
+            <div style="font-size:12px;color:var(--ink2);margin:8px 0">审批前问「为什么这么改」（← 本页示例）</div>
+            <div class="note" style="font-size:11.5px;background:#fff">出口：<b>回注审批/驳回意见</b>。
+              审批人身份仍由服务端二次校验 —— 会话不构成身份旁路。</div>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:9px;padding:11px 12px">
+            <div><span class="t warn">结对 pair</span> <span class="t mute">可写</span> <span class="t mute">P1</span></div>
+            <div style="font-size:12px;color:var(--ink2);margin:8px 0">边聊边改，人把控方向</div>
+            <div class="note" style="font-size:11.5px">出口：<b>提交进流水线</b>。本质是研发任务 DEVELOPING 态的交互式 Job ——
+              结束后照走门禁 → 集测判定 → 安全提交 → 审批。<b>人参与不等于少走流程。</b></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 设计说明 ── -->
+      <div class="card" style="margin-top:12px">
+        <h3>这一版按评审改掉的六处</h3>
+        <table><thead><tr><th style="width:20%">问题</th><th style="width:38%">原稿的做法</th><th>改成</th></tr></thead>
+        <tbody>
+          <tr><td><b>模式做成 Tab</b></td>
+            <td>顶部「咨询 / 质询 / 结对」分段控件，可点切换；下方列表还有一个「模式」下拉，两个控件互相矛盾</td>
+            <td>模式是<b>会话属性</b>，显示为标题旁的静态标签，创建时确定后不可变。Tab 暗示可随时切换，而咨询只读、结对可写 —— 点一下就完成一次无闸门提权</td></tr>
+          <tr><td><b>画了不可能的状态</b></td>
+            <td>门禁显示「集成测试失败 6」，任务卡却是 <code class="mono">REVIEWING</code></td>
+            <td>集测失败只会退回 DEVELOPING（附录 A #10）；REVIEWING 只能从 READY_TO_COMMIT 经 risk_high 进入。改成门禁全绿 + 命中 migrations → 高风险 → 审批中</td></tr>
+          <tr><td><b>⌘K 被占两次</b></td>
+            <td>顶栏搜索标 ⌘K，PRD 的全局对话抽屉也要 ⌘K</td>
+            <td>⌘K 留给搜索（已有），对话抽屉改 <kbd>⌘J</kbd>。搜索框那句「或输入 / 快捷指令」本来就留了另一条路</td></tr>
+          <tr><td><b>上下文条层级错了</b></td>
+            <td>横跨整页压在三栏之上，看起来像页面属性；页面标题 + 模式 Tab + 上下文条三层 chrome 吃掉近半屏</td>
+            <td>移进对话栏内部 —— 它是<b>这个会话</b>的。省下的竖直空间还给消息流</td></tr>
+          <tr><td><b>上下文条与证据面板不分</b></td>
+            <td>两边列的都是卡片/文件/产物，看不出区别；门禁结果还在两处各画一遍，格式还不一样</td>
+            <td>上下文条 = <b>输入</b>（带着什么在回答，可增删可钉住）；证据面板 = <b>输出</b>（引用过什么，只读累积）。门禁只在消息流里出现一次</td></tr>
+          <tr><td><b>缺两个 PRD 必需件</b></td>
+            <td>没有有用/没用反馈；没有任何预算与超时提示</td>
+            <td>反馈补上并标明它记 hits（§10.2 的输入源）；输入框下常驻预算条与「空闲 30 分钟自动挂起」，会话列表里的挂起态也写明原因</td></tr>
+        </tbody></table>
+
+        <h3 style="margin-top:16px">词汇表对齐</h3>
+        <p style="color:var(--ink2);font-size:12.5px;margin:0 0 6px">
+          员工统一为「架构员工 / 开发员工 / 集测员工」—— 原稿里「代码评审Bot」「DevBot」「性能Bot」三套命名混排，
+          而 Bot 不在词汇表里，代码评审与性能员工也不存在。</p>
+        <p style="color:var(--ink2);font-size:12.5px;margin:0 0 6px">
+          会话状态用<b>进行中 / 已挂起 / 已结束</b>。原稿的「已归档」被 <code class="mono">CONTEXT.md</code> 的
+          「已了结」词条明确列为 <i>Avoid</i>，且 PRD 27 里没有归档这一档。</p>
+        <p style="color:var(--ink2);font-size:12.5px;margin:0">
+          任务 id 一律 <code class="mono">ag-YYYYMMDD-NNN</code>（见 <code class="mono">core/task_ids.py</code>），
+          不是 <code class="mono">TASK-2024-0501</code>。</p>
+
+        <h3 style="margin-top:16px">还没解决的一处</h3>
+        <div class="note warn" style="font-size:12.5px">
+          <b>长会话的密度。</b>这一屏只画了两轮。真正难的布局是 30 轮以上时怎么保持可扫读 ——
+          消息要不要折叠、工具步骤要不要默认收起、虚拟滚动的锚点放哪。这里只用「载入更早的 18 条」占了个位，
+          不算答案。建议实现前先拿真实会话长度试一版。
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 需求提交 ═══ -->
+    <section class="page" id="submit">
+      <div class="head"><div><h1>需求提交</h1><div class="sub">通过模板化表单快速发起研发任务</div></div></div>
+      <div class="grid" style="grid-template-columns:1fr 300px;align-items:start">
+        <div class="card">
+          <div class="steps" style="margin-bottom:20px">
+            <div class="s now" style="flex:0 0 33%"><div class="dot">1</div><div class="lb">填写需求信息</div></div>
+            <div class="s" style="flex:0 0 33%"><div class="dot">2</div><div class="lb">系统产出计划</div></div>
+            <div class="s" style="flex:0 0 33%"><div class="dot">3</div><div class="lb">确认后开始开发</div></div>
+          </div>
+
+          <label>需求标题 <span class="req">*</span></label>
+          <input placeholder="简明扼要，如：下单时预占库存" /><div class="cnt">0 / 100</div>
+
+          <label>需求类型 <span class="req">*</span></label>
+          <div class="radios">
+            <div class="rd on"><b>功能需求</b><small>新增功能或能力</small></div>
+            <div class="rd"><b>缺陷修复</b><small>产品缺陷或问题</small></div>
+            <div class="rd"><b>改进建议</b><small>体验优化或重构</small></div></div>
+
+          <label>需求原文 <span class="req">*</span></label>
+          <textarea placeholder="写清楚「谁、在什么情况下、要得到什么」。这段会**原样**进架构员工的上下文——它是任务的全部起点。"></textarea>
+          <div class="cnt">0 / 2000</div>
+
+          <div class="grid g2" style="gap:14px">
+            <div><label>集成测试</label><select>
+              <option>auto · 由影响规则与 AI 兜底判定</option>
+              <option>always · 无论如何都跑</option>
+              <option>never · 跳过</option></select></div>
+            <div><label>token 预算</label><input placeholder="留空用根配置 1,500,000" /></div>
+          </div>
+
+          <label>优先级</label>
+          <div class="chips"><span>P0 紧急</span><span>P1 高</span><span class="on">P2 中</span><span>P3 低</span></div>
+
+          <div style="display:flex;gap:10px;margin-top:20px">
+            <button class="btn">保存草稿</button><div class="spacer" style="flex:1"></div>
+            <button class="btn pri" data-go="tasks">提交需求</button></div>
+        </div>
+
+        <div>
+          <div class="card"><h3>提交之后会发生什么</h3>
+            <table style="font-size:12.5px"><tbody>
+              <tr><td class="mono" style="width:22px">1</td><td>架构员工读需求与项目地图，产出<b>计划</b> —— 你在写代码之前先看到它</td></tr>
+              <tr><td class="mono">2</td><td>开发员工在隔离工作区实现，自跑本模块测试</td></tr>
+              <tr><td class="mono">3</td><td>质量门禁。挂了带着失败报告回开发，最多 3 轮</td></tr>
+              <tr><td class="mono">4</td><td>影响规则判定要不要跑集成测试</td></tr>
+              <tr><td class="mono">5</td><td>提交前检查：越权复查 + 密钥扫描 + 风险评级</td></tr>
+              <tr><td class="mono">6</td><td><b>低风险自动合并；高风险停下来等你</b></td></tr>
+            </tbody></table>
+            <div class="note" style="margin-top:10px">随时可以取消。终态会生成 <b>report.md</b>，能直接贴进 PR。</div></div>
+
+          <div class="card" style="margin-top:12px"><h3>相关的历史任务</h3>
+            <table><tbody>
+              <tr><td><b>预占接口加 reason 字段</b><div class="mono">ag-…-001</div></td>
+                <td style="text-align:right"><span class="t pur">进行中</span></td></tr>
+              <tr><td><b>库存扣减幂等</b><div class="mono">ag-…-006</div></td>
+                <td style="text-align:right"><span class="t pri">开发中</span></td></tr>
+            </tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 基因组管理（P1） ═══ -->
+    <section class="page" id="genome">
+      <div class="head"><div><h1>基因组管理</h1><div class="sub">项目认知、规则与 Skill 的版本化资产 · <span class="t warn">PRD 12 · P1</span></div></div></div>
+      <div class="tabs"><button class="on">项目地图</button><button>知识卡片</button><button>规则管理</button><button>Skill 注册表</button></div>
+
+      <div class="grid" style="grid-template-columns:1fr 300px;align-items:start">
+        <div>
+          <div class="card"><h3>模块依赖图</h3>
+            <svg viewBox="0 0 520 190" style="width:100%;height:190px">
+              <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L7,3 z" fill="#98a1b3"/></marker></defs>
+              <line x1="180" y1="60" x2="270" y2="90" stroke="#98a1b3" stroke-width="1.5" marker-end="url(#ar)"/>
+              <line x1="180" y1="130" x2="270" y2="100" stroke="#98a1b3" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+              <rect x="60" y="42" width="120" height="38" rx="8" fill="#eef3ff" stroke="#2f6bff"/>
+              <text x="120" y="60" text-anchor="middle" font-size="11" fill="#1d2129">order-service</text>
+              <text x="120" y="72" text-anchor="middle" font-size="9" fill="#98a1b3">code-1/</text>
+              <rect x="60" y="112" width="120" height="38" rx="8" fill="#f1eeff" stroke="#7a5af8"/>
+              <text x="120" y="130" text-anchor="middle" font-size="11" fill="#1d2129">inventory-service</text>
+              <text x="120" y="142" text-anchor="middle" font-size="9" fill="#98a1b3">code-2/</text>
+              <rect x="272" y="76" width="140" height="40" rx="8" fill="#fff6e8" stroke="#f79009"/>
+              <text x="342" y="93" text-anchor="middle" font-size="11" fill="#1d2129">order-to-inventory</text>
+              <text x="342" y="106" text-anchor="middle" font-size="9" fill="#98a1b3">契约 · http</text>
+              <text x="440" y="96" font-size="10" fill="#98a1b3">→ 碰它必跑集成测试</text>
+            </svg>
+            <div class="note">图上的**契约节点**不是装饰：`touches_interface_schema` 这条影响规则盯的就是它。</div></div>
+
+          <div class="card" style="margin-top:12px"><h3>知识卡片库 <span class="more">共 2 条</span></h3>
+            <table><thead><tr><th>编号</th><th>标题</th><th>适用</th><th>置信度</th><th>命中数</th><th>状态</th></tr></thead><tbody>
+              <tr><td class="mono">L-0001</td><td>order-service 的测试要先起本地 Redis</td>
+                <td class="mono">order-service</td><td>0.8</td><td><b>12</b></td><td><span class="t ok">生效</span></td></tr>
+              <tr><td class="mono">L-0002</td><td>迁移脚本必须带回滚语句</td>
+                <td class="mono">code-1/migrations/**</td><td>0.6</td><td><b>0</b></td><td><span class="t warn">零命中</span></td></tr>
+            </tbody></table>
+            <div class="note" style="margin-top:10px">命中数**只在任务成功时才加**——它反映有效性而不是频率。零命中的会被归档（移动，不删除）。</div></div>
+        </div>
+
+        <div class="card"><h3>Skill 注册表</h3>
+          <table><tbody>
+            <tr><td>requirement-analysis</td><td><span class="t pur">智能体</span></td><td class="mono">1.0.0</td></tr>
+            <tr><td>code-develop</td><td><span class="t pur">智能体</span></td><td class="mono">1.0.0</td></tr>
+            <tr><td>unit-gate</td><td><span class="t ok">确定性</span></td><td class="mono">1.0.0</td></tr>
+            <tr><td>itest-decide</td><td><span class="t pur">智能体</span></td><td class="mono">1.0.0</td></tr>
+            <tr><td>itest-run</td><td><span class="t pri">混合</span></td><td class="mono">1.0.0</td></tr>
+          </tbody></table>
+          <div class="note" style="margin-top:10px"><b>kind 不是分类标签，是成本开关。</b>「确定性」的零 token。默认答案是确定性，用智能体要论证。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 观测中心（P1） ═══ -->
+    <section class="page" id="obs">
+      <div class="head"><div><h1>观测中心</h1><div class="sub">任务效率、进化效果与成本 · <span class="t warn">PRD 12 · P1</span></div></div></div>
+
+      <div class="grid" style="grid-template-columns:repeat(5,1fr)">
+        <div class="card kpi"><div class="lab">平均修复轮次</div><div class="val">1.4</div>
+          <div class="dt"><span class="up">-0.5 ↓</span> 目标向下</div></div>
+        <div class="card kpi"><div class="lab">门禁一次通过率</div><div class="val" style="color:var(--ok)">76.4%</div>
+          <div class="dt"><span class="up">+6.3% ↑</span> 目标向上</div></div>
+        <div class="card kpi"><div class="lab">平均任务时长</div><div class="val">24 分</div>
+          <div class="dt"><span class="up">-12% ↓</span> 目标向下</div></div>
+        <div class="card kpi"><div class="lab">升级人工率</div><div class="val amber">4.0%</div>
+          <div class="dt"><span class="up">-1.2% ↓</span> 目标向下</div></div>
+        <div class="card kpi"><div class="lab">知识命中数</div><div class="val purple">12</div>
+          <div class="dt">样本 25 个任务</div></div>
+      </div>
+
+      <div class="grid g2" style="margin-top:12px">
+        <div class="card"><h3>进化效果趋势（按周）</h3>
+          <svg viewBox="0 0 300 110" style="width:100%;height:130px">
+            <line x1="30" y1="90" x2="290" y2="90" stroke="#e8ecf3"/>
+            <polyline fill="none" stroke="#12b76a" stroke-width="2" points="40,70 90,62 140,58 190,46 240,40 285,34"/>
+            <polyline fill="none" stroke="#7a5af8" stroke-width="2" points="40,30 90,36 140,40 190,52 240,58 285,64"/>
+            <text x="30" y="104" font-size="8" fill="#98a1b3">W1</text><text x="270" y="104" font-size="8" fill="#98a1b3">W6</text>
+          </svg>
+          <div style="display:flex;gap:14px;font-size:11.5px;color:var(--ink2)">
+            <span style="color:var(--ok)">— 门禁一次通过率（向上）</span><span style="color:var(--pur)">— 平均修复轮次（向下）</span></div>
+          <div class="note warn" style="margin-top:10px"><b>样本量不足时不画线。</b>三个任务画出来的「下降趋势」是噪声，而一旦它被贴进汇报，后面所有判断都建立在它上面。</div>
+        </div>
+
+        <div class="card"><h3>成本分析</h3>
+          <div style="display:flex;gap:16px;align-items:center">
+            <svg viewBox="0 0 42 42" style="width:110px;height:110px;flex:none">
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="#2f6bff" stroke-width="6" stroke-dasharray="46 54" stroke-dashoffset="25"/>
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="#7a5af8" stroke-width="6" stroke-dasharray="28 72" stroke-dashoffset="-21"/>
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="#12b76a" stroke-width="6" stroke-dasharray="18 82" stroke-dashoffset="-49"/>
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="#f79009" stroke-width="6" stroke-dasharray="8 92" stroke-dashoffset="-67"/>
+              <text x="21" y="22" text-anchor="middle" font-size="4.4" fill="#1d2129" font-weight="700">1.24M</text></svg>
+            <table style="font-size:12px"><tbody>
+              <tr><td style="color:var(--pri)">● dev-employee</td><td class="mono">571k</td><td class="mono">46%</td></tr>
+              <tr><td style="color:var(--pur)">● arch-employee</td><td class="mono">347k</td><td class="mono">28%</td></tr>
+              <tr><td style="color:var(--ok)">● itest-employee</td><td class="mono">223k</td><td class="mono">18%</td></tr>
+              <tr><td style="color:var(--warn)">● itest-decide 兜底</td><td class="mono">99k</td><td class="mono">8%</td></tr>
+              <tr><td class="mono" style="color:var(--ink3)">gate-runner</td><td class="mono">0</td><td class="mono">确定性</td></tr>
+            </tbody></table></div>
+          <div class="note" style="margin-top:10px">拿不到用量的运行时标 <code>unavailable</code>，**不填 0**——填 0 会让预算闸以为还有额度。</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px"><h3>审计 / 事件日志 <span class="more">导出 ⭳</span></h3>
+        <table><thead><tr><th>时间</th><th>task_id</th><th>actor</th><th>事件</th><th>skill@version</th></tr></thead><tbody>
+          <tr><td class="mono">10:21:19</td><td class="mono">ag-…-001</td><td>itest-employee</td>
+            <td><span class="t bad">itest_fail</span></td><td class="mono">itest-run@1.0.0</td></tr>
+          <tr><td class="mono">10:19:41</td><td class="mono">ag-…-001</td><td>orchestrator</td>
+            <td><span class="t pri">itest_decision</span> source=rule</td><td class="mono">—</td></tr>
+          <tr><td class="mono">09:58:02</td><td class="mono">ag-…-002</td><td>orchestrator</td>
+            <td><span class="t warn">risk_high</span> migrations</td><td class="mono">—</td></tr>
+          <tr><td class="mono">09:30:11</td><td class="mono">ag-…-004</td><td>orchestrator</td>
+            <td><span class="t bad">escalated</span> 缺 gitleaks</td><td class="mono">—</td></tr>
+        </tbody></table></div>
+    </section>
+
+    <section class="page" id="settings">
+      <div class="head"><div><h1>系统设置</h1><div class="sub">员工与运行时、预算与并发、集成配置 · <span class="t warn">PRD 18</span></div></div></div>
+      <div class="card"><div class="empty">这一页属于 PRD 18（部署与租户）。当前这些都改配置文件：<br />
+        <code class="mono">agentgenome.yaml</code> · <code class="mono">employees/*.yaml</code> · <code class="mono">genome/rules/*</code></div></div>
+    </section>
+
+    </main>
+  </div>
+</div>
+
+<div class="gapbtn"><button class="btn pri" onclick="document.getElementById('gap').classList.toggle('on')">与后端能力的差异 ⚠ 8 处 ▾</button></div>
+<div class="gap" id="gap">
+  <h4 style="margin-top:0">这些是参考图有、但后端给不出的东西</h4>
+  <p>照图实现的话，前端会去要一堆拿不到的数据。逐条是怎么处理的：</p>
+  <table><thead><tr><th>参考图</th><th>处理</th></tr></thead><tbody>
+    <tr><td>泳道无 ESCALATED</td><td><b>加回来</b>。它是最需要人看的状态，漏掉等于升级人工的任务在看板上消失</td></tr>
+    <tr><td>READY_TO_COMMIT 独立一列</td><td>它是确定性关卡，毫秒级穿过，<b>没人停在那</b>。改成生命周期里的一个节点</td></tr>
+    <tr><td>Tester / Reviewer 员工</td><td>花名册只有 3 个。<b>门禁与提交前检查是脚本</b>，列为 <code>gate-runner</code> / <code>precheck</code></td></tr>
+    <tr><td>SLA 逾期 / 即将逾期</td><td><b>砍掉</b>。没有 SLA 概念，任务级时间上限还在遗留账（PRD 14）</td></tr>
+    <tr><td>风险 85/100 分</td><td>改成<b>二值 + 命中规则</b>。造一个连续分会让人以为 84 和 86 有区别</td></tr>
+    <tr><td>系统健康里的向量库</td><td><b>去掉</b>。PRD 10 明确写了不引入向量检索</td></tr>
+    <tr><td>缺陷密度 /KLOC、回归率、知识采纳率</td><td>换成已有的：<code>gate_first_pass_ratio</code>、<code>fix_rounds</code>、知识命中数</td></tr>
+    <tr><td>「AI 帮写」「智能生成验收标准」</td><td>提交是<b>纯表单不烧 token</b>。这是新需求，要单独立 issue 并说明成本</td></tr>
+  </tbody></table>
+
+  <h4>我按你的图改掉的三处</h4>
+  <p>① 深色 → 浅色企业中后台；② 泳道卡片加进度条与执行者头像；③ 审批页改成三栏，驳回原因用<b>勾选项 + 必填说明</b>（比纯文本框更容易结构化回注）。</p>
+
+  <h4>我坚持没改的两处</h4>
+  <p><b>决策区吸顶</b>：真实 diff 比示例长得多，滚下去之后按钮要还在。<br />
+  <b>「模拟断线」按钮</b>：它演示推拉结合——SSE 断了页面照样自愈。这是个架构承诺，值得在原型里可验证。</p>
+</div>
+
+<script>
+  document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',e=>{
+    const id=el.dataset.go;
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id===id));
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===id));
+    document.querySelector('.main').scrollTo(0,0); window.scrollTo(0,0); e.stopPropagation();
+  }));
+  document.querySelectorAll('[data-open]').forEach(el=>el.addEventListener('click',()=>{
+    const d=document.getElementById('detail'); d.style.display='block';
+    d.scrollIntoView({behavior:'smooth',block:'start'});
+  }));
+  document.querySelectorAll('.tabs button[data-tab]').forEach(b=>b.addEventListener('click',()=>{
+    b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.tab));
+  }));
+  document.querySelectorAll('.radios .rd').forEach(r=>r.addEventListener('click',()=>{
+    r.parentElement.querySelectorAll('.rd').forEach(x=>x.classList.remove('on')); r.classList.add('on');
+  }));
+  document.querySelectorAll('.chips span').forEach(c=>c.addEventListener('click',()=>{
+    c.parentElement.querySelectorAll('span').forEach(x=>x.classList.remove('on')); c.classList.add('on');
+  }));
+  function tryReject(){
+    const txt=document.getElementById('rej').value.trim();
+    const any=[...document.querySelectorAll('.rr')].some(x=>x.checked);
+    const ok=txt.length>0&&any;
+    document.getElementById('rejerr').classList.toggle('on',!ok);
+    if(ok) alert('已驳回。勾选项 + 说明会一起置顶进下一轮开发的上下文。');
+  }
+  /* 对话工作台。tab 用 data-ctab 而不是 data-tab —— 上面那个处理器是全局的，
+     会把任务详情页的 pane 一起关掉。 */
+  document.querySelectorAll('[data-ctab]').forEach(b=>b.addEventListener('click',()=>{
+    b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    document.querySelectorAll('.cpane').forEach(p=>p.style.display=(p.id==='c-'+b.dataset.ctab)?'block':'none');
+  }));
+  document.querySelectorAll('.ses').forEach(s=>s.addEventListener('click',()=>{
+    document.querySelectorAll('.ses').forEach(x=>x.classList.remove('on')); s.classList.add('on');
+  }));
+  document.querySelectorAll('.cp x').forEach(x=>x.addEventListener('click',e=>{
+    e.stopPropagation(); x.parentElement.remove();
+  }));
+  function showDraft(){
+    const d=document.getElementById('draft'); d.style.display='block';
+    d.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  function hit(b){
+    b.style.borderColor='var(--ok)'; b.style.color='var(--ok)';
+    document.getElementById('hitnote').innerHTML=
+      '已记账：<b>audit-trail</b> hits 17 → 18';
+  }
+  function newSes(){
+    alert('新建会话时选模式（咨询 / 质询 / 结对）。\n\n选定后不可更改 —— 只读与可写是两套工具集，中途切换等于一次没有闸门的提权。');
+  }
+  function dropSse(){
+    const n=document.getElementById('ssenote');
+    n.className='note warn';
+    n.innerHTML='推送已断开 —— 页面<b>没有</b>停在断线那一刻，数据仍然靠 <code>GET /tasks/{id}/logs</code> 的游标分页拉取。这就是「推拉结合」要的效果。';
+  }
+</script>
+</body>
+</html>

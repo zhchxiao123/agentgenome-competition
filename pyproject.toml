@@ -1,0 +1,86 @@
+[project]
+name = "agentgenome"
+version = "0.1.0"
+description = "AgentGenome — 版本化原生的自进化研发协同底座"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "jsonschema>=4.22",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+]
+
+[project.scripts]
+agctl = "agentgenome.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "pytest-timeout>=2.3",
+    "pytest-xdist>=3.6",
+    "mypy>=1.10",
+    "ruff>=0.5",
+    "types-jsonschema>=4.22",
+    "types-pyyaml>=6.0",
+    "uvicorn>=0.30",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentgenome"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# `-n auto` 起并行:这套测试几乎每个用例都在 tmp 里摆一整个真实 git 工作区,单进程
+# 时 16 核里只有一个在动。要串行调试(pdb、看实时输出)时加 `-n0` 覆盖即可。
+#
+# `--timeout=300` 是止血带,不是耐心的上限:最慢的用例也只要几秒,300 秒还没回来
+# 就不是慢而是卡死了。卡死过——测试客户端退出时 join 一个永远不结束的事件循环线程,
+# 整轮 pytest 就那么挂着,CI 上表现为"跑了一小时还没完",没有任何一行告诉你卡在哪。
+# 有了它,那种卡死会指名道姓地失败在那一个用例上。用线程法而不是信号法,因为信号
+# 只打得到主线程,而卡住的正是主线程在等的那个子线程。
+addopts = "-q --strict-markers -m 'not drift' -n auto --timeout=300 --timeout-method=thread"
+asyncio_mode = "auto"
+# 通过的用例立刻删掉它的 tmp 目录。默认策略是 all + 保留 3 轮,而这套测试一轮就要
+# 落 1~4 GB(每个用例一整个 git 工作区加两个克隆),几十轮之后 /tmp 里堆了 107 GB,
+# 目录项多到 overlayfs 自己先慢下来——测试于是越跑越慢。失败的用例仍然保留现场。
+tmp_path_retention_policy = "failed"
+markers = [
+    "requires_docker: 需要 Docker 环境，默认在 CI 中跳过",
+    "requires_network: 需要访问外部代码托管平台，默认跳过",
+    "drift: 跑真实 CLI Agent 检测黄金样本失真。烧真 token，默认跳过；\n        用 `pytest -m drift tests/drift` 手工触发，见 docs/golden-sample-refresh.md",
+    "craft_ab: 手艺的 A/B 基准。跑真实 Agent 对比挂/不挂手艺的修复轮次与门禁一次通过率。\n        衡量的是内容质量不是正确性，进常规 CI 只会因模型随机性假失败，所以默认跳过。",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+# examples/ 是替身业务仓,代表"别人的代码",不受本仓规范约束。
+exclude = ["examples"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# typer 的惯用法就是把 Option/Argument 放在默认值里。
+"src/agentgenome/cli.py" = ["B008"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src", "tests"]
+strict = true
+plugins = []
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_decorators = false

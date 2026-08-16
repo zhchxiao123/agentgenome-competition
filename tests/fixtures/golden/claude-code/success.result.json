@@ -1,0 +1,1 @@
+{"task_id": "probe-1", "producer": "probe", "created_at": "2026-08-08T10:12:20Z", "passed": true, "changed_files": ["hello.txt"]}

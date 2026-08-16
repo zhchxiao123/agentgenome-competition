@@ -1,0 +1,18 @@
+{
+  "task_id": "smoke-002",
+  "employee_id": "agentgenome-smoke",
+  "procedure_ref": "smoke@0.0.1",
+  "round": 1,
+  "attempt": 1,
+  "subject": "",
+  "context_text": "# 任务:创建问候文件(适配器冒烟测试)\n\n你是 developer。请完成一个极小的任务,用来验证任务通道:\n\n1. 在本任务目录的 `workspace/` 下创建 `hello.txt`,内容为一行:\n   `hello from agentgenome adapter`\n2. 在本任务目录的 `artifacts/` 下写 `result.json`,内容为:\n   `{\"task_id\": \"smoke-002\", \"passed\": true}`\n3. 在本任务目录写 `result.md`,一两句话说明你做了什么。\n4. 最后把本任务目录 `meta.json` 里的 `status` 改成 `SUCCESS`。\n\n除上述文件外不要改任何东西。\n",
+  "tools_allow": [],
+  "tools_deny": [],
+  "timeout_s": 900,
+  "max_tokens": 300000,
+  "output_schema": {},
+  "craft": "## 交作业合同\n\n任务完成时,必须把结构化结果写成本任务目录 `artifacts/result.json`;\n人类可读小结写 `result.md`;完成后把 `meta.json` 的 status 置为 SUCCESS。\n**没有这些交付的执行会被判失败**,不论其他事情做得多好。\n",
+  "workspace": {
+    "README.md": "# 冒烟工作区\n这里是初始现场。\n"
+  }
+}

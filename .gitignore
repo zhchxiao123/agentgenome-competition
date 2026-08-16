@@ -1,0 +1,17 @@
+.coderfleet-tasks/
+.coderfleet-terminals/
+# 会话里上传的附件(PRD 原稿、截图)。内容该进 .scratch/ 的 PRD 里,不是靠这个目录留存——
+# 留在这儿只会让 git status 长期带一串噪音,真正的改动反而不容易一眼看清。
+.coderfleet-uploads/
+# harness 给子代理开的临时工作树。它自己会清,清不掉的也不该进版本库。
+.claude/worktrees/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.coverage
